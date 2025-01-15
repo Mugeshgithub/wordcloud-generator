@@ -8,7 +8,7 @@ from io import BytesIO
 import base64
 
 # ------------------------------
-# Functions for File Reading
+# Functions
 # ------------------------------
 def read_file(file):
     """Read uploaded file content based on file type."""
@@ -31,56 +31,81 @@ def filter_stopwords(text, custom_stopwords):
     filtered_words = [word for word in words if word.lower() not in all_stopwords]
     return " ".join(filtered_words)
 
-def generate_wordcloud(text, width, height, stopwords):
+def generate_wordcloud(text, width, height, stopwords, color_palette):
     """Generate a Word Cloud image."""
-    wordcloud = WordCloud(width=width, height=height, background_color="white", stopwords=stopwords).generate(text)
+    wordcloud = WordCloud(width=width, height=height, background_color="white",
+                           stopwords=stopwords, colormap=color_palette).generate(text)
     return wordcloud
 
-def download_link(data, filename, label):
-    """Generate a download link for files."""
+def get_download_link(data, filename, label):
+    """Generate a download link for the filtered text."""
     b64 = base64.b64encode(data.encode()).decode()
     return f'<a href="data:file/txt;base64,{b64}" download="{filename}">{label}</a>'
 
 # ------------------------------
 # Streamlit App Setup
 # ------------------------------
-st.set_page_config(page_title="Word Cloud Generator", layout="wide")
-st.markdown("<h1 style='text-align: center; color: steelblue;'>✨ Word Cloud Generator ✨</h1>", unsafe_allow_html=True)
+st.set_page_config(page_title="✨ InsightCloud", layout="wide", page_icon="☁️")
+
+# Header Section with a Hero Image
+st.markdown("""
+    <style>
+        .main-header {
+            background-color: #f7f7f7;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.1);
+        }
+        .main-header h1 {
+            color: #2E4053;
+            font-family: 'Roboto', sans-serif;
+        }
+        .main-header p {
+            color: #2E4053;
+            font-family: 'Open Sans', sans-serif;
+            font-size: 18px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+        .footer a {
+            color: #3498db;
+            text-decoration: none;
+        }
+    </style>
+    <div class="main-header">
+        <h1>✨ InsightCloud ✨</h1>
+        <p>Visualize, Analyze, and Unlock the Power of Your Words.</p>
+    </div>
+""", unsafe_allow_html=True)
 
 # Sidebar
-st.sidebar.header("Options")
+st.sidebar.title("⚙️ Options")
 uploaded_files = st.sidebar.file_uploader("Upload Files (txt, pdf, docx)", type=["txt", "pdf", "docx"], accept_multiple_files=True)
 use_default_stopwords = st.sidebar.checkbox("Use Default Stopwords", value=True)
-additional_stopwords = st.sidebar.text_area("Custom Stopwords (comma-separated)", value="")
-preview_text = st.sidebar.checkbox("Preview Filtered Text", value=True)
-
-# Word Cloud Settings
-st.sidebar.subheader("Word Cloud Settings")
-cloud_width = st.sidebar.slider("Cloud Width", 400, 2000, 800, 100)
-cloud_height = st.sidebar.slider("Cloud Height", 200, 1000, 400, 50)
-max_words = st.sidebar.slider("Max Words", 50, 500, 200, 50)
-color_palette = st.sidebar.selectbox("Color Palette", ["Monochrome", "Vibrant", "Cool"])
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("**Connect with Me:**")
-st.sidebar.markdown("""
-[![LinkedIn](https://img.icons8.com/?size=24&id=13930&format=png)](https://bit.ly/3YYtinf)
-[![GitHub](https://img.icons8.com/?size=24&id=106567&format=png)](https://bit.ly/3CyOBTZ)
-[![Fiverr](https://img.icons8.com/?size=24&id=121864&format=png)](https://www.fiverr.com/sellers/mugesh_krish/edit)
-""", unsafe_allow_html=True)
+additional_stopwords = st.sidebar.text_area("Add Custom Stopwords (comma-separated)", value="")
+dark_mode = st.sidebar.checkbox("Enable Dark Mode")
+cloud_width = st.sidebar.slider("Cloud Width", 400, 1200, 800)
+cloud_height = st.sidebar.slider("Cloud Height", 300, 800, 400)
+max_words = st.sidebar.slider("Max Words", 50, 300, 150)
+color_palette = st.sidebar.selectbox("Color Palette", ["coolwarm", "viridis", "plasma", "magma", "cividis"])
 
 # ------------------------------
 # Main Section
 # ------------------------------
 if uploaded_files:
-    st.subheader("Uploaded Files")
+    st.subheader("📂 Uploaded Files")
     all_text = ""
 
     for uploaded_file in uploaded_files:
-        file_text = read_file(uploaded_file)
-        if file_text:
-            all_text += " " + file_text
-            st.write(f"✅ {uploaded_file.name} successfully read!")
+        file_content = read_file(uploaded_file)
+        if file_content:
+            all_text += file_content
+            st.success(f"✅ {uploaded_file.name} uploaded successfully!")
 
     # Process Stopwords
     custom_stopwords = set(additional_stopwords.split(",")) if additional_stopwords else set()
@@ -90,33 +115,43 @@ if uploaded_files:
     # Filter Text
     filtered_text = filter_stopwords(all_text, custom_stopwords)
 
-    # Preview Filtered Text
-    if preview_text:
-        st.subheader("Filtered Text Preview")
-        st.text_area("Preview", value=filtered_text[:1000], height=150)
-
-    # Generate Word Cloud
-    st.subheader("Word Cloud")
-    wordcloud = generate_wordcloud(filtered_text, cloud_width, cloud_height, custom_stopwords)
-    fig, ax = plt.subplots(figsize=(cloud_width / 70, cloud_height / 70))
+    # Word Cloud Preview
+    st.subheader("☁️ Generated Word Cloud")
+    wordcloud = generate_wordcloud(filtered_text, cloud_width, cloud_height, custom_stopwords, color_palette)
+    fig, ax = plt.subplots(figsize=(cloud_width / 100, cloud_height / 100))
     ax.imshow(wordcloud, interpolation="bilinear")
     ax.axis("off")
     st.pyplot(fig)
 
-    # Download Filtered Text
-    st.markdown(download_link(filtered_text, "filtered_text.txt", "📥 Download Filtered Text"), unsafe_allow_html=True)
+    # Add Attribution
+    st.markdown("<p style='text-align: center;'>🌟 Created by <strong>Mugesh Murugaiyan</strong></p>", unsafe_allow_html=True)
+
+    # Provide Download Links
+    st.markdown(get_download_link(filtered_text, "filtered_text.txt", "📥 Download Filtered Text"), unsafe_allow_html=True)
 
     # Word Count Analysis
+    st.subheader("📊 Word Count Analysis")
     words = filtered_text.split()
     word_count_df = pd.DataFrame({"Word": words}).value_counts().reset_index(name="Count").rename(columns={0: "Word"})
-    st.subheader("Word Count Table")
     st.dataframe(word_count_df)
 
-    # Download Word Count as CSV
-    csv_data = word_count_df.to_csv(index=False)
-    b64_csv = base64.b64encode(csv_data.encode()).decode()
-    st.markdown(f'<a href="data:file/csv;base64,{b64_csv}" download="word_count.csv">📥 Download Word Count as CSV</a>',
-                unsafe_allow_html=True)
+    # CSV Download Link
+    csv = word_count_df.to_csv(index=False)
+    st.markdown(f'<a href="data:file/csv;base64,{base64.b64encode(csv.encode()).decode()}" download="word_count.csv">📥 Download Word Count as CSV</a>', unsafe_allow_html=True)
 
 else:
     st.info("Upload files to start generating word clouds!")
+
+# ------------------------------
+# Footer
+# ------------------------------
+st.markdown("""
+    <div class="footer">
+        <p>Built with ❤️ by <strong>Mugesh Murugaiyan</strong></p>
+        <p>
+            <a href="https://bit.ly/3YYtinf" target="_blank">LinkedIn</a> |
+            <a href="https://bit.ly/3CyOBTZ" target="_blank">GitHub</a> |
+            <a href="https://www.fiverr.com/sellers/mugesh_krish/edit" target="_blank">Fiverr</a>
+        </p>
+    </div>
+""", unsafe_allow_html=True)
